@@ -16,6 +16,8 @@ from gymnasium import Env
 from gymnasium.spaces import Box, Discrete
 # Import the DQN algorithm
 from stable_baselines3 import DQN
+import threading
+from matplotlib import pyplot as plt
 # OS
 import os
 
@@ -25,7 +27,7 @@ class WebGame(gym.Env):
         super().__init__()
         # Setup space
         self.observation_space = Box(low=0, high=255, shape=(1,83,100), dtype=np.uint8)
-        self.action_space = Discrete(4)
+        self.action_space = Discrete(6)
         # Define extraction parameters for the game
         self.cap = mss()
         # Area of the game where we want to extract
@@ -35,32 +37,39 @@ class WebGame(gym.Env):
 
     # Step, an action called in order to move the game
     def step(self, action):
-        # Action key - 0 = no_op, 1 = left, 2 = right, 3 = jump, 4 = shake
+        # Action key - 0 = no_op, 1 = right, 2 = jump
         action_map = {
-            0: "no_op",
-            1: "d",
-            2: "space",
-            3: "z"
+            0: [],            # No operation
+            1: ['d'],         # Move right
+            2: ['space'],     # Jump
+            3: ['d', 'space'],# Move right and jump simultaneously
+            4: ['z'],         # Spin
+            5: ['z', 'd']     # Move while spinning
         }
         duration_map = {
             0: 0.05,  # Duration for no_op
-            1: 0.05,  # Duration for a
-            2: 0.1,   # Duration for d (right movement)
-            3: 0.05,  # Duration for space (jump)
-            4: 0.05   # Duration for z (shake)
+            1: 0.05,  # Duration for d (right movement)
+            2: 0.1,   # Duration for space (jump)
+            3: 0.1,    # Duration for d and space (simultaneous)
+            4: 0.05,
+            5: 0.1
         }
 
         if action != 0:
-            pydirectinput.keyDown(action_map[action])  # Press the key
-            time.sleep(duration_map[action])          # Keep the key pressed for a certain duration
-            pydirectinput.keyUp(action_map[action])    # Release the key
+            for key in action_map[action]:
+                pydirectinput.keyDown(key)    # Press the key
+
+            time.sleep(duration_map[action]) # Keep the keys pressed for a certain duration
+
+            for key in action_map[action]:
+                pydirectinput.keyUp(key)      # Release the key
 
         # Checking whether the game is done
         done, _ = self.get_done()
         # Get the new observation
         new_observation = self.get_observation()
-        # Reward - higher reward for moving right
-        reward = 0.25 if action == 2 else 1  # Higher reward for moving right
+        # Give reward for staying alive
+        reward = 1
         # Terminated and truncated signals
         terminated = bool(done)  # Convert done to boolean
         truncated = False         # Assuming no truncation
@@ -68,6 +77,7 @@ class WebGame(gym.Env):
         info = {}
 
         return new_observation, reward, terminated, truncated, info
+
 
     # Visualize the game
     def render(self):
@@ -81,6 +91,9 @@ class WebGame(gym.Env):
         time.sleep(4)
         pydirectinput.press("space")
         time.sleep(7)
+        pydirectinput.keyDown("d")
+        time.sleep(0.5)
+        pydirectinput.keyUp("d")
         observation = self.get_observation()
         info = {}  # You can populate this info dictionary if needed
         return observation, info
@@ -115,3 +128,13 @@ class WebGame(gym.Env):
         return score, score_cap
 
 env = WebGame()
+
+def plot_thread(observation):
+    plt.imshow(observation[0])
+    plt.show()
+    time.sleep(1)
+
+# Start the plot thread
+while True:
+    observation = env.get_observation()
+    plot_thread(observation)

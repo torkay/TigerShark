@@ -13,7 +13,6 @@ from client import WebGame
 env = WebGame()
 
 class TrainAndLoggingCallback(BaseCallback):
-
     def __init__(self, check_freq, save_path, verbose=1):
         super(TrainAndLoggingCallback, self).__init__(verbose)
         self.check_freq = check_freq
