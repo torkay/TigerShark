@@ -1,0 +1,7 @@
+opencv-python
+pytesseract
+pillow
+pydirectinput
+stable-baselines3
+gym
+matplotlib
